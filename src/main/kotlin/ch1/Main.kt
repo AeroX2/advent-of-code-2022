@@ -1,7 +1,7 @@
 package ch1
 
 fun main() {
-    val data = object{}.javaClass.getResource("/ch1/data-first")?.readText()
+    val data = object{}.javaClass.getResource("/ch1/input.txt")?.readText()
     if (data == null) {
         println("Missing data file");
         return;
