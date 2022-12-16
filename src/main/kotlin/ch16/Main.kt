@@ -40,42 +40,42 @@ fun parseLines(lines: List<String>): Map<String, Valve> {
         val valve = valves.getOrPut(name) { Valve(name) }
         valve.rate = rate
         valve.childValves = childValves.map { valves.getOrPut(it) { Valve(it) } }
-//        valves[name] = Valve(name, newRate, zv)
     }
     return valves.toMap()
 }
 
-//data class Step(val path: List<Valve> = listOf(), val seen: Set<Valve> = setOf())
-
-fun backtrack(currValve: Valve, path: List<Valve>, openValves: Set<Valve>, closedValves: Set<Valve>, depth: Int = 30, pressure: Int = 0): Pair<List<Valve>, Int> {
+fun backtrack(
+    currValve: Valve,
+    openValves: List<Valve>,
+    closedValves: List<Valve>,
+    depth: Int = 30,
+    currPressure: Int = 0
+): Int {
     if (depth <= 0) {
-        return Pair(path, pressure) // .sumOf { it.rate }
+        return currPressure
     }
 
-    var maxPressure = Pair(-1, Pair(path, pressure))
+    var maxPressure = currPressure
     for (valve in closedValves) {
-        val closedValvesMod = closedValves.filter { it != valve }.toSet()
-//        val d = pathFind(currValve, valve).size - 1
         val d = currValve.distanceTo(valve)+1
-        if (depth - d >= 0) {
-            val openV = backtrack(valve, path + valve, openValves + valve, closedValvesMod,  depth-d, pressure + openValves.sumOf { it.rate } * d)
-            val openVPressure = openV.second
-            if (openVPressure > maxPressure.first) {
-                maxPressure = Pair(openVPressure, openV)
-            }
+        if (depth - d == 0) {
+            val pressure = currPressure + openValves.sumOf { it.rate } * d
+            maxPressure = maxOf(maxPressure, pressure)
+        } else if (depth - d > 0) {
+            val closedValvesMod = closedValves.filter { it != valve }.toList()
+            val pressure = backtrack(valve, openValves + valve, closedValvesMod,  depth-d, currPressure + openValves.sumOf { it.rate } * d)
+            maxPressure = maxOf(maxPressure, pressure)
         }
     }
 
-    return maxPressure.second
+    return maxPressure
 }
 
 fun part1(lines: List<String>): Int {
     val valves = parseLines(lines)
 
-    val closedValves = valves.values.toSet()
-    val g = backtrack(valves["AA"]!!, listOf(valves["AA"]!!), setOf(), closedValves)
-    println(g)
-    return 0
+    val closedValves = valves.values.toList()
+    return backtrack(valves["AA"]!!, listOf(), closedValves)
 }
 fun part2(lines: List<String>): Int {
     return -1
