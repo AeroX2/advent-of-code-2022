@@ -1,7 +1,7 @@
 package ch16
 
 import kotlin.collections.ArrayDeque
-import kotlin.math.abs
+import kotlin.math.max
 import kotlin.system.measureTimeMillis
 
 fun main() {
@@ -12,7 +12,6 @@ fun main() {
     }
 
     val lines = data.split("\n")
-    println(measureTimeMillis { part1(lines) })
     println(part1(lines))
     println(part2(lines))
 }
@@ -47,15 +46,19 @@ fun parseLines(lines: List<String>): Map<String, Valve> {
     return valves.toMap()
 }
 
+typealias Path = List<Pair<Set<Valve>, Int>>
+
 fun backtrack(
     currValve: Valve,
     closedValves: List<Valve>,
     openValves: List<Valve>,
     timeLeft: Int = 30,
     currPressure: Int = 0
-): Int {
+): Path {
     val currPressureRate = openValves.sumOf { it.rate }
-    var maxPressure = currPressure + (timeLeft-1) * currPressureRate
+
+    val pressureIfNothingHappens = currPressure + (timeLeft-1) * currPressureRate
+    val r = mutableListOf(Pair(openValves.toSet(), pressureIfNothingHappens))
     for (valve in closedValves) {
         val d = currValve.distanceTo(valve)
         if (timeLeft - d > 0) {
@@ -68,64 +71,49 @@ fun backtrack(
                 timeLeft-d,
                 currPressure + currPressureRate * (d-1) + newPressureRate
             )
-            maxPressure = maxOf(maxPressure, pressure)
+            r.addAll(pressure)
+//            maxPressure = maxOf(maxPressure, pressure)
+
         }
     }
-
-    return maxPressure
-}
-
-fun backtrack2(
-    currValve: Valve,
-    currElephantValve: Valve,
-    closedValves: List<Valve>,
-    timeLeft: Int = 26,
-    currPressureRate: Int = 0,
-    currPressure: Int = 0
-): Int {
-//    var maxPressure = currPressure + (timeLeft-1) * currPressureRate
-//    for (possibleValve in closedValves) {
-//        for (possibleElephantValve in closedValves.filter { it != possibleValve }) {
-//            val d1 = currValve.distanceTo(possibleValve)
-//            val d2 = currElephantValve.distanceTo(possibleElephantValve)
-//            val md = minOf(d1, d2)
-//            val d = maxOf(d1, d2)
-//            if (timeLeft - d > 0) {
-//                val closedValvesMod = closedValves.filter { it != possibleValve && it != possibleElephantValve }.toList()
-//
-//                val h = if (md == d1) possibleValve.rate else possibleElephantValve.rate
-//                val l = if (md == d1) possibleElephantValve.rate else possibleValve.rate
-//                val newPressure = currPressure + currPressureRate * (d-1) + h * abs(d1 - d2) + l
-//
-//                val newPressureRate = currPressureRate + possibleValve.rate + possibleElephantValve.rate
-//                val pressure = backtrack2(
-//                    possibleValve,
-//                    possibleElephantValve,
-//                    closedValvesMod,
-//                    timeLeft - d,
-//                    newPressureRate,
-//                    newPressure,
-//                )
-//                maxPressure = maxOf(maxPressure, pressure)
-//            }
-//        }
-//    }
-//
-//    return maxPressure
-    return -1
+    return r.toList()
 }
 
 fun part1(lines: List<String>): Int {
     val valves = parseLines(lines)
 
     val closedValves = valves.values.filter { it.rate != 0 }
-    return backtrack(valves["AA"]!!, closedValves, listOf())
+    val paths = backtrack(valves["AA"]!!, closedValves, listOf())
+    return paths.maxOf { it.second }
 }
 fun part2(lines: List<String>): Int {
     val valves = parseLines(lines)
 
     val closedValves = valves.values.filter { it.rate != 0 }
-    return backtrack2(valves["AA"]!!, valves["AA"]!!, closedValves)
+    val paths = backtrack(valves["AA"]!!, closedValves, listOf(), 26).sortedByDescending { it.second }.asSequence()
+
+    var maxPressure = 0
+    paths.forEachIndexed { i, p1 ->
+        paths.forEachIndexed { ii, p2 ->
+            if (i > ii) {
+                return@forEachIndexed
+            }
+            val openedValves1 = p1.first
+            val pressureReleased1 = p1.second
+            if (pressureReleased1 * 2 < maxPressure) {
+                return@forEachIndexed
+            }
+
+            val openedValves2 = p2.first
+            val pressureReleased2 = p2.second
+            if (pressureReleased1 + pressureReleased2 > maxPressure &&
+                openedValves1.intersect(openedValves2).isEmpty()
+            ) {
+                maxPressure = pressureReleased1 + pressureReleased2
+            }
+        }
+    }
+    return maxPressure
 }
 
 fun pathFind(start: Valve, end: Valve): List<Valve> {
